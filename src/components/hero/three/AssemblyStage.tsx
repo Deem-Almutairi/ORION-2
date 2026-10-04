@@ -6,7 +6,7 @@ import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { placeLabel } from "@/lib/labels";
 import { PARTS, type PartDef, type PartId } from "@/lib/parts";
 import { placedCount, useHero } from "@/lib/store";
-import { ACCENT, geo, mats } from "./materials";
+import { ACCENT, geo, mast, mats } from "./materials";
 import { Ghost, PartModel } from "./TowerParts";
 
 type Status = "free" | "drag" | "snap" | "return" | "placed";
@@ -61,8 +61,10 @@ export function AssemblyStage() {
     if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
     const fit = Math.max(1, 1.75 / aspect);
     const px = state.pointer.x * 0.3, py = state.pointer.y * 0.15;
-    if (narrow) { cam.position.set(px, 1.2 + py, 7.0); look.set(0, 1.05, 0); }
-    else { cam.position.set(px, 1.25 + py, 4.6 * fit); look.set(-0.15, 0.82 + (fit - 1) * 0.4, 0); }
+    // Pull back as the mast rises so the whole 3.5 m unit stays in frame.
+    const m = mast.value;
+    if (narrow) { cam.position.set(px, 1.2 + py + m * 0.6, 7.0 + m * 2.6); look.set(0, 1.05 + m * 0.75, 0); }
+    else { cam.position.set(px, 1.25 + py + m * 0.5, 4.6 * fit + m * 2.4); look.set(-0.15 * (1 - m), 0.82 + (fit - 1) * 0.4 + m * 0.95, 0); }
     cam.lookAt(look);
 
     const g = spin.current;

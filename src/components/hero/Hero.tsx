@@ -39,7 +39,7 @@ export function Hero() {
   }, [mode, assembled]);
 
   return (
-    <section id="top" aria-label="Interactive ORION assembly and airport simulation" className="relative border-b border-line">
+    <section id="top" aria-label="Interactive ORION assembly and crowd simulation" className="relative border-b border-line">
       <div className="relative h-[clamp(460px,72svh,620px)] overflow-hidden bg-bg min-[1025px]:h-[clamp(560px,86vh,940px)]">
         <div className="absolute inset-0">
           <Scene />

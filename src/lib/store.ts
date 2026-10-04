@@ -2,12 +2,14 @@
 
 import { create } from "zustand";
 import type { Readout, SimEvent } from "./sim/engine";
+import { sceneById, type SceneId } from "./sim/config";
 import { PART_IDS, type PartId } from "./parts";
 
 export type Mode = "assemble" | "sim";
 
 interface HeroState {
   mode: Mode;
+  scene: SceneId;
   placed: Record<PartId, boolean>;
   /** Bumps when the visitor asks for automatic assembly. */
   autoRequest: number;
@@ -23,6 +25,7 @@ interface HeroState {
   requestAuto: () => void;
   setOnline: (v: boolean) => void;
   goTo: (mode: Mode) => void;
+  setScene: (id: SceneId) => void;
   skipToSim: () => void;
   togglePause: () => void;
   setPhase: (i: number) => void;
@@ -37,6 +40,7 @@ let fadeTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useHero = create<HeroState>((set, get) => ({
   mode: "assemble",
+  scene: "event",
   placed: nonePlaced(),
   autoRequest: 0,
   online: false,
@@ -65,6 +69,17 @@ export const useHero = create<HeroState>((set, get) => ({
         readout: null,
         placed: mode === "sim" ? allPlaced() : nonePlaced(),
       });
+      fadeTimer = setTimeout(() => set({ fading: false }), 160);
+    }, 560);
+  },
+
+  setScene: (scene) => {
+    if (get().scene === scene || get().fading) return;
+    if (get().mode !== "sim") { set({ scene }); return; }
+    clearTimeout(fadeTimer);
+    set({ fading: true, fadeText: `Loading ${sceneById(scene).name.toLowerCase()}` });
+    fadeTimer = setTimeout(() => {
+      set({ scene, phase: 0, log: [], readout: null, paused: false });
       fadeTimer = setTimeout(() => set({ fading: false }), 160);
     }, 560);
   },

@@ -31,6 +31,8 @@ export const mats = {
 
 /** 0 = unpowered, 1 = online. Animated by <PowerDriver/>. */
 export const power = { value: 0, target: 0 };
+/** 0 = mast retracted, 1 = fully deployed. Follows power, a little slower. */
+export const mast = { value: 0, target: 0 };
 
 export function applyPower(k: number) {
   mats.led.color.copy(ledDark).lerp(ledLit, k);

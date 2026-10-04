@@ -5,24 +5,27 @@ import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
 import type { Line2 } from "three-stdlib";
-import { CROWD_GATE, GATES, PHASES, RELIEF_GATE } from "@/lib/sim/config";
+import { PHASES, sceneById, type SceneId } from "@/lib/sim/config";
 import { SimEngine } from "@/lib/sim/engine";
 import { placeLabel } from "@/lib/labels";
 import { useHero } from "@/lib/store";
-import { ACCENT, AMBER, ORANGE, getBlobTexture } from "./materials";
-import { Hall } from "./Hall";
+import { ACCENT, AMBER, ORANGE, getBlobTexture, mast } from "./materials";
+import { Environment } from "./Environments";
 import { Tower } from "./Tower";
+import { mastPodY } from "./TowerParts";
 
 const ACC = new THREE.Color(ACCENT), AMB = new THREE.Color(AMBER), ORG = new THREE.Color(ORANGE);
 
-export function SimulationStage() {
-  const engine = useMemo(() => new SimEngine(), []);
+export function SimulationStage({ sceneId }: { sceneId: SceneId }) {
+  const engine = useMemo(() => new SimEngine(sceneById(sceneId)), [sceneId]);
   const readoutTimer = useRef(0);
 
   useEffect(() => {
     const { pushLog, setPhase } = useHero.getState();
     engine.onEvent = pushLog;
     engine.onPhase = setPhase;
+    // Development only: lets automated captures fast-forward the scenario.
+    if (process.env.NODE_ENV === "development") (window as unknown as { __orionSim?: SimEngine }).__orionSim = engine;
     return () => { engine.onEvent = undefined; engine.onPhase = undefined; };
   }, [engine]);
 
@@ -36,7 +39,7 @@ export function SimulationStage() {
 
   return (
     <>
-      <Hall />
+      <Environment scene={engine.scene} />
       <Heatmap engine={engine} />
       <Zones engine={engine} />
       <Chevrons engine={engine} />
@@ -140,7 +143,10 @@ function OrionRig({ engine }: { engine: SimEngine }) {
     const o = engine.orion;
     r.position.set(o.x, o.moving ? Math.sin(engine.total * 3) * 0.006 : 0, o.z);
     r.rotation.y = o.heading;
-    if (pivot.current) pivot.current.rotation.y = engine.scanYaw;
+    if (pivot.current) {
+      pivot.current.rotation.y = engine.scanYaw;
+      pivot.current.position.y = 1.24 + mastPodY(mast.value) + 0.05;
+    }
     if (cone.current) {
       const want = engine.phase === 0 ? 0.03 : engine.phase === 1 ? 0.11 : 0.06;
       cone.current.opacity += (want - cone.current.opacity) * Math.min(1, dt * 2);
@@ -158,7 +164,7 @@ function OrionRig({ engine }: { engine: SimEngine }) {
       <Tower />
       <pointLight color={ACCENT} intensity={1.4} distance={4} decay={2} position={[0, 1.1, 0.7]} />
       <group ref={pivot} position={[0, 1.24, 0.05]}>
-        <mesh geometry={coneGeo} rotation={[0.16, 0, 0]}>
+        <mesh geometry={coneGeo} rotation={[0.55, 0, 0]}>
           <meshBasicMaterial ref={cone} color={ACCENT} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
         </mesh>
       </group>
@@ -179,7 +185,7 @@ function OrionRig({ engine }: { engine: SimEngine }) {
 function Heatmap({ engine }: { engine: SimEngine }) {
   const { canvas, ctx, tex } = useMemo(() => {
     const canvas = document.createElement("canvas");
-    canvas.width = 144; canvas.height = 88;
+    canvas.width = 288; canvas.height = 176;
     const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -190,29 +196,37 @@ function Heatmap({ engine }: { engine: SimEngine }) {
 
   useFrame((_, dt) => {
     const m = mat.current; if (!m) return;
-    const want = engine.phase >= 2 ? 0.9 : 0;
+    const want = engine.phase >= 2 ? 1 : 0;
     m.opacity += (want - m.opacity) * Math.min(1, dt * 1.5);
     timer.current -= dt;
     if (m.opacity < 0.01 || timer.current > 0) return;
     timer.current = 0.2;
-    const w = canvas.width, h = canvas.height, rad = (2.4 / 36) * w;
+    const w = canvas.width, h = canvas.height, rad = (2.2 / 36) * w;
     ctx.globalCompositeOperation = "source-over"; ctx.clearRect(0, 0, w, h);
     ctx.globalCompositeOperation = "lighter";
     for (const p of engine.people) {
       const x = ((p.x + 18) / 36) * w, y = ((p.z + 11) / 22) * h;
       const gr = ctx.createRadialGradient(x, y, 0, x, y, rad);
-      gr.addColorStop(0, "rgba(255,255,255,.2)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+      gr.addColorStop(0, "rgba(255,255,255,.09)"); gr.addColorStop(1, "rgba(255,255,255,0)");
       ctx.fillStyle = gr; ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2);
     }
     const img = ctx.getImageData(0, 0, w, h), d = img.data;
-    const L = (a: number, b: number, t: number) => a + (b - a) * t;
+    // Continuous ramp: faint cyan (sparse) -> amber (warning) -> orange (critical).
+    const stops: [number, number, number, number, number][] = [
+      [0.02, 34, 211, 238, 0], [0.12, 34, 211, 238, 0.22], [0.3, 251, 191, 36, 0.38], [0.5, 249, 115, 22, 0.55],
+    ];
     for (let i = 0; i < d.length; i += 4) {
-      const v = d[i] / 255;
-      let r = 0, g = 0, b = 0, a = 0;
-      if (v >= 0.06 && v < 0.4) { const t = (v - 0.06) / 0.34; r = 34; g = 211; b = 238; a = 0.15 + t * 0.3; }
-      else if (v >= 0.4 && v < 0.7) { const t = (v - 0.4) / 0.3; r = L(34, 251, t); g = L(211, 191, t); b = L(238, 36, t); a = 0.45 + t * 0.15; }
-      else if (v >= 0.7) { const t = Math.min(1, (v - 0.7) / 0.3); r = L(251, 249, t); g = L(191, 115, t); b = L(36, 22, t); a = 0.6 + t * 0.15; }
-      d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = a * 255;
+      const v = d[i + 3] / 255; // accumulated alpha = local crowd intensity
+      let c = stops[stops.length - 1];
+      if (v <= stops[0][0]) { d[i + 3] = 0; continue; }
+      for (let k = 1; k < stops.length; k++) {
+        if (v <= stops[k][0]) {
+          const a = stops[k - 1], b = stops[k], t = (v - a[0]) / (b[0] - a[0]);
+          c = [v, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t, a[4] + (b[4] - a[4]) * t];
+          break;
+        }
+      }
+      d[i] = c[1]; d[i + 1] = c[2]; d[i + 2] = c[3]; d[i + 3] = c[4] * 255;
     }
     ctx.globalCompositeOperation = "source-over";
     ctx.putImageData(img, 0, 0);
@@ -232,7 +246,7 @@ function Heatmap({ engine }: { engine: SimEngine }) {
 function Zones({ engine }: { engine: SimEngine }) {
   const lines = useRef<(Line2 | null)[]>([]);
   const fill = useRef<THREE.MeshBasicMaterial>(null);
-  const crowd = engine.zones[CROWD_GATE];
+  const crowd = engine.crowdZone;
 
   useFrame((_, dt) => {
     const k = Math.min(1, dt * 2);
@@ -276,8 +290,14 @@ function Zones({ engine }: { engine: SimEngine }) {
 /* ---------- guidance arrows from the crowded gate to the relief gate ---------- */
 
 function Chevrons({ engine }: { engine: SimEngine }) {
-  const from = useMemo(() => new THREE.Vector3(GATES[CROWD_GATE].x + 1.6, 0.05, -4.6), []);
-  const to = useMemo(() => new THREE.Vector3(GATES[RELIEF_GATE].x - 0.6, 0.05, -6.6), []);
+  const from = useMemo(() => {
+    const c = engine.crowdZone.x, r = engine.reliefZone.x, dir = Math.sign(r - c) || 1;
+    return new THREE.Vector3(c + 1.6 * dir, 0.05, -4.6);
+  }, [engine]);
+  const to = useMemo(() => {
+    const r = engine.reliefZone.x, dir = Math.sign(r - engine.crowdZone.x) || 1;
+    return new THREE.Vector3(r - 0.6 * dir, 0.05, -6.6);
+  }, [engine]);
   const geo = useMemo(() => {
     const s = new THREE.Shape();
     s.moveTo(-0.4, -0.1); s.lineTo(0, 0.3); s.lineTo(0.4, -0.1); s.lineTo(0.4, -0.33); s.lineTo(0, 0.07); s.lineTo(-0.4, -0.33); s.closePath();
@@ -314,9 +334,9 @@ function SceneTags({ engine }: { engine: SimEngine }) {
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
   const v = useMemo(() => new THREE.Vector3(), []);
-  const crowd = GATES[CROWD_GATE], relief = GATES[RELIEF_GATE];
+  const crowd = engine.crowdZone, relief = engine.reliefZone;
   useFrame(() => {
-    placeLabel("orion", v.set(engine.orion.x, 1.95, engine.orion.z), camera, size, true);
+    placeLabel("orion", v.set(engine.orion.x, 1.6 + mastPodY(mast.value), engine.orion.z), camera, size, true);
     placeLabel("alert", v.set(crowd.x, 2.9, -7.4), camera, size, engine.phase >= 3 && engine.crowdHigh);
     placeLabel("rec", v.set(relief.x, 2.9, -7.6), camera, size, engine.phase === 4);
   });
@@ -338,13 +358,13 @@ function SimCamera({ engine }: { engine: SimEngine }) {
     if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
     const k = narrow ? 1.45 : 1;
     const o = engine.orion, fx = Math.sin(o.heading), fz = Math.cos(o.heading);
-    const crowdX = GATES[CROWD_GATE].x;
+    const crowdX = engine.crowdZone.x, relX = engine.reliefZone.x, side = Math.sign(relX - crowdX) || 1;
     switch (engine.phase) {
       case 0: wantPos.set(o.x - fx * 5.5 * k + fz * 1.6, 3.0 * k, o.z - fz * 5.5 * k - fx * 1.6); wantLook.set(o.x + fx * 2.5, 1.0, o.z + fz * 2.5); break;
       case 1: { const a = engine.t * 0.22 + 0.6; wantPos.set(o.x + Math.cos(a) * 5.2 * k, 2.6 * k, o.z + Math.sin(a) * 5.2 * k); wantLook.set(o.x + fx * 1.5, 1.1, o.z + fz * 1.5); break; }
       case 2: wantPos.set(1, 19 * k, 11 * k); wantLook.set(1, 0, -3); break;
-      case 3: wantPos.set(crowdX - 5.5, 5.2 * k, 3.8 * k); wantLook.set(crowdX + 1.5, 0.8, -7); break;
-      default: { const t = (engine.t - PHASES[4].start) / 15; wantPos.set(THREE.MathUtils.lerp(3, -2, t), THREE.MathUtils.lerp(6.5, 11, t) * k, THREE.MathUtils.lerp(4.5, 10, t) * k); wantLook.set(THREE.MathUtils.lerp(crowdX + 2.5, crowdX - 1, t), 0.6, THREE.MathUtils.lerp(-6.5, -4, t)); }
+      case 3: wantPos.set(crowdX - 5.5 * side, 5.2 * k, 3.8 * k); wantLook.set(crowdX + 1.5 * side, 0.8, -7); break;
+      default: { const t = (engine.t - PHASES[4].start) / 15, mid = (crowdX + relX) / 2; wantPos.set(THREE.MathUtils.lerp(mid - 3 * side, mid - 8 * side, t), THREE.MathUtils.lerp(6.5, 11, t) * k, THREE.MathUtils.lerp(4.5, 10, t) * k); wantLook.set(THREE.MathUtils.lerp(mid, mid - 2 * side, t), 0.6, THREE.MathUtils.lerp(-6.5, -4, t)); }
     }
     const s = useHero.getState().paused ? 0 : 1 - Math.exp(-dt * 1.4);
     pos.current.lerp(wantPos, s); look.current.lerp(wantLook, s);

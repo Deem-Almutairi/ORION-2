@@ -12,8 +12,8 @@ import "@fontsource/ibm-plex-mono/600.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ORION",
-  description: "ORION — Optimization Robotics Intelligence for Operations & Navigation. An AI monitoring tower that detects people, maps crowd density, scores risk and recommends action.",
+  title: "ORION · ForgeX_NBU",
+  description: "ORION by team ForgeX_NBU — Optimization Robotics Intelligence for Operations & Navigation. An AI monitoring tower that detects people, maps crowd density, scores risk and recommends action.",
 };
 
 export const viewport: Viewport = {

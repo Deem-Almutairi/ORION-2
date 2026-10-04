@@ -1,5 +1,6 @@
-import { capabilities, hardware, pipeline, roadmap, site, statement } from "@/content/site";
+import { capabilities, engineering, hardware, members, pipeline, roadmap, site, sources, statement } from "@/content/site";
 import { CapabilityIcon } from "./icons";
+import { TeamLogo } from "./TeamLogo";
 
 function Head({ eyebrow, title, body }: { eyebrow: string; title: string; body?: string }) {
   return (
@@ -121,13 +122,49 @@ export function Roadmap() {
   );
 }
 
-export function Contact() {
+export function Engineering() {
   return (
-    <section id="contact" className={section}>
-      <div className={`${inner} rise items-start`}>
-        <h2 className="max-w-[16ch] text-[clamp(38px,5.4vw,72px)] leading-[1.02]">Bring ORION to <span className="text-acc">your site.</span></h2>
-        <p className="max-w-[46ch] text-[17px] text-muted">Talk to the team about a demonstration, a pilot deployment, or collaboration on the next phase.</p>
-        <span className="select-all font-mono text-sm text-muted">{site.contactEmail}</span>
+    <section id="engineering" className={section}>
+      <div className={inner}>
+        <Head eyebrow="Engineering answers" title="Three hard questions, answered in the design."
+          body="These are the main challenges a field crowd-monitoring unit faces, and the design decision ORION makes for each." />
+        <div className="rise grid grid-cols-[repeat(auto-fit,minmax(min(300px,100%),1fr))] gap-6">
+          {engineering.map((e, i) => (
+            <div key={e.tag} className="flex min-w-0 flex-col gap-4 border border-line bg-panel px-7 py-8">
+              <span className="eyebrow">{String(i + 1).padStart(2, "0")} · {e.tag}</span>
+              <p className="text-[15px] text-dim"><b className="font-medium text-muted">Challenge.</b> {e.problem}</p>
+              <p className="text-[16px] text-fg"><b className="font-semibold text-acc">ORION.</b> {e.answer}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Team() {
+  return (
+    <section id="team" className={section}>
+      <div className={`${inner} rise`}>
+        <div className="flex flex-col gap-5">
+          <TeamLogo size={56} className="text-[32px]" />
+          <h2 className="max-w-[18ch] text-[clamp(34px,4.6vw,60px)] leading-[1.04]">Built by team <span className="text-acc">ForgeX_NBU</span>.</h2>
+          <p className="max-w-[60ch] text-[17px] text-muted">{site.university} · {site.competition} · {site.track}</p>
+        </div>
+        <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-px border border-line bg-line p-0">
+          {members.map((m) => (
+            <li key={m} className="flex flex-col gap-1 bg-panel px-6 py-5">
+              <b className="font-display text-xl font-semibold">{m}</b>
+              <span className="font-mono text-xs uppercase tracking-[0.12em] text-dim">Team member</span>
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-col gap-2">
+          <span className="font-mono text-xs uppercase tracking-[0.12em] text-dim">Sources</span>
+          <ul className="m-0 flex list-none flex-col gap-1 p-0 text-sm">
+            {sources.map((src) => <li key={src.href}><a href={src.href} target="_blank" rel="noreferrer" className="text-muted underline decoration-line-2 underline-offset-4 hover:text-fg">{src.label}</a></li>)}
+          </ul>
+        </div>
       </div>
     </section>
   );
@@ -138,7 +175,7 @@ export function SiteFooter() {
     <footer>
       <div className="wrap flex flex-wrap justify-between gap-3 py-7 font-mono text-xs tracking-[0.06em] text-dim">
         <span>{site.name} · {site.expansion}</span>
-        <span>© {new Date().getFullYear()} {site.team}</span>
+        <span className="flex items-center gap-2">© {new Date().getFullYear()} <TeamLogo size={18} /></span>
       </div>
     </footer>
   );

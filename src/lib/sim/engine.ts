@@ -1,5 +1,5 @@
 import {
-  CROWD_GATE, GATES, HALL, LOOP_SECONDS, PHASES, RELIEF_GATE, ROUTE, SIM,
+  HALL, LOOP_SECONDS, PHASES, ROUTE, SIM, type SceneDef,
 } from "./config";
 
 /**
@@ -102,8 +102,13 @@ export class SimEngine {
   private fired = new Set<string>();
   private eventId = 0;
 
-  constructor(count: number = SIM.passengers) {
-    this.zones = GATES.map((g) => ({ id: g.id, x: g.x, x0: g.x - 3, x1: g.x + 3, z0: -10.6, z1: -4.2, count: 0, level: "Low" as Level }));
+  readonly scene: SceneDef;
+  private gateXs: number[];
+
+  constructor(scene: SceneDef, count: number = SIM.passengers) {
+    this.scene = scene;
+    this.gateXs = scene.zones.map((z) => z.x);
+    this.zones = scene.zones.map((g) => ({ id: g.id, x: g.x, x0: g.x - 3, x1: g.x + 3, z0: -10.6, z1: -4.2, count: 0, level: "Low" as Level }));
     for (let i = 0; i < count; i++) {
       this.people.push({
         x: 0, z: 0, tx: 0, tz: 0, vx: 0, vz: 0, heading: rand(-3, 3), speed: rand(0.85, 1.35),
@@ -116,7 +121,7 @@ export class SimEngine {
 
   reset() {
     for (const p of this.people) {
-      const s = Math.random() < 0.5 ? spot("concourse") : spot(pick(["seat", "queue"] as const), pick(GATES).x);
+      const s = Math.random() < 0.5 ? spot("concourse") : spot(pick(["seat", "queue"] as const), pick(this.gateXs));
       p.x = s[0]; p.z = s[1]; p.vx = 0; p.vz = 0; p.det = 0;
       p.mode = "normal"; p.wait = rand(0, 4);
       this.nextTarget(p);
@@ -126,7 +131,8 @@ export class SimEngine {
     this.updateZones();
   }
 
-  get crowdZone() { return this.zones[CROWD_GATE]; }
+  get crowdZone() { return this.zones[this.scene.crowd]; }
+  get reliefZone() { return this.zones[this.scene.relief]; }
   get crowdHigh() { return this.crowdZone.level === "High"; }
 
   clock(withSeconds = false) {
@@ -165,8 +171,8 @@ export class SimEngine {
     const p = this.phase;
     if (this.t > 11) this.once("track", () => this.emit(`Tracking ${this.tracked} people in view`));
     if (this.t > 12.5) this.once("gather", () => this.gatherCrowd());
-    if (p >= 3) this.once("alert", () => this.emit(`Gate ${this.crowdZone.id} high density · ${this.crowdZone.count} people`, "alert"));
-    if (p === 4 && this.t > 39 && !this.crowdHigh) this.once("normal", () => this.emit(`Gate ${this.crowdZone.id} density back to ${this.crowdZone.level.toLowerCase()}`));
+    if (p >= 3) this.once("alert", () => this.emit(`${this.scene.words.zone} ${this.crowdZone.id} high density · ${this.crowdZone.count} people`, "alert"));
+    if (p === 4 && this.t > 39 && !this.crowdHigh) this.once("normal", () => this.emit(`${this.scene.words.zone} ${this.crowdZone.id} density back to ${this.crowdZone.level.toLowerCase()}`));
     if (p === 4 && this.t > 41) this.once("resume", () => {
       Object.assign(this.orion, { mode: "patrol", face: null, wp: this.nearestWaypoint() });
       this.emit("Patrol resumed");
@@ -185,11 +191,11 @@ export class SimEngine {
   private enterPhase(i: number) {
     this.lastPhase = i;
     const crowd = this.crowdZone;
-    if (i === 0) this.emit("Patrol started · concourse loop");
+    if (i === 0) this.emit(`Mast deployed · ${this.scene.place.toLowerCase()}`);
     if (i === 1) this.emit("Vision sweep active");
     if (i === 2) this.emit(`Density map updated · ${this.zones.length} gate zones`);
     if (i === 3) Object.assign(this.orion, { mode: "go", tx: crowd.x + 0.4, tz: -3.6, face: Math.PI });
-    if (i === 4) { this.redirectCrowd(); this.emit(`Open Gate ${GATES[RELIEF_GATE].id} queue lane`, "rec"); }
+    if (i === 4) { this.redirectCrowd(); this.emit(this.scene.words.action, "rec"); }
     this.onPhase?.(i);
   }
 
@@ -202,7 +208,7 @@ export class SimEngine {
   }
 
   private nextTarget(p: Person) {
-    const r = Math.random(), gx = pick(GATES).x;
+    const r = Math.random(), gx = pick(this.gateXs);
     let s: [number, number];
     if (r < 0.38) { s = spot("concourse"); p.activity = "walk"; }
     else if (r < 0.66) { s = spot("seat", gx); p.activity = "seat"; }
@@ -221,7 +227,7 @@ export class SimEngine {
   }
 
   private redirectCrowd() {
-    const rx = GATES[RELIEF_GATE].x;
+    const rx = this.reliefZone.x;
     this.people
       .filter((p) => p.mode === "hold" || p.mode === "toCrowd")
       .forEach((p, i) => {

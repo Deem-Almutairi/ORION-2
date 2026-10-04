@@ -2,7 +2,7 @@
 
 import { hero } from "@/content/site";
 import { PARTS } from "@/lib/parts";
-import { PHASES } from "@/lib/sim/config";
+import { PHASES, SCENES, captionFor, sceneById } from "@/lib/sim/config";
 import type { Level } from "@/lib/sim/engine";
 import { placedCount, useHero } from "@/lib/store";
 import { DragIcon } from "@/components/icons";
@@ -33,7 +33,7 @@ function AssembleHud() {
   return (
     <>
       <div className={`${corner} flex flex-col gap-3 min-[1025px]:col-start-1 min-[1025px]:row-start-1`}>
-        <span className="eyebrow">ORION · Assembly bay</span>
+        <span className="eyebrow">ForgeX_NBU · ORION assembly bay</span>
         <div className="flex w-full max-w-80 gap-1" aria-hidden>
           {PARTS.map((p, i) => (
             <i key={p.id} className={`h-1 flex-1 transition-colors ${i < count ? "bg-acc shadow-[0_0_10px_rgb(34_211_238/0.6)]" : "bg-line-2"}`} />
@@ -67,11 +67,23 @@ function SimHud() {
   const paused = useHero((s) => s.paused);
   const togglePause = useHero((s) => s.togglePause);
   const goTo = useHero((s) => s.goTo);
+  const sceneId = useHero((s) => s.scene);
+  const setScene = useHero((s) => s.setScene);
+  const scene = sceneById(sceneId);
 
   return (
     <>
       <div className={`${corner} flex flex-col gap-3.5 min-[1025px]:col-start-1 min-[1025px]:row-start-1 min-[1025px]:max-w-[520px]`}>
-        <span className="eyebrow">Simulation · Airport concourse</span>
+        <span className="eyebrow">Simulation · {scene.place}</span>
+        <div role="group" aria-label="Choose a scene" className="flex flex-wrap gap-1.5">
+          {SCENES.map((sc) => (
+            <button key={sc.id} type="button" aria-pressed={sc.id === sceneId} onClick={() => setScene(sc.id)}
+              className={`min-h-9 cursor-pointer border px-3 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors ${
+                sc.id === sceneId ? "border-acc bg-[rgb(34_211_238/0.12)] text-fg" : "border-line-2 bg-bg/60 text-muted hover:border-[var(--acc-line)] hover:text-fg"}`}>
+              {sc.name}
+            </button>
+          ))}
+        </div>
         <ol className="m-0 flex list-none flex-wrap gap-1 p-0">
           {PHASES.map((p, i) => (
             <li key={p.id} className={`border px-2.5 py-2 font-mono text-[11px] uppercase leading-none tracking-[0.12em] transition-colors ${
@@ -80,7 +92,7 @@ function SimHud() {
             </li>
           ))}
         </ol>
-        <p className="max-w-[24ch] font-display text-[clamp(20px,2vw,28px)] leading-tight min-[1025px]:min-h-[2.4em]">{PHASES[phase]?.caption}</p>
+        <p className="max-w-[24ch] font-display text-[clamp(20px,2vw,28px)] leading-tight min-[1025px]:min-h-[2.4em]">{captionFor(scene, phase)}</p>
       </div>
 
       <div className={`min-[1025px]:pointer-events-auto flex flex-col gap-3 min-[1025px]:col-start-2 min-[1025px]:row-span-3 min-[1025px]:row-start-1 min-[1025px]:self-start`}>

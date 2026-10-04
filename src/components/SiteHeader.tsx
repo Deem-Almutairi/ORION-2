@@ -1,5 +1,6 @@
 import { site } from "@/content/site";
 import { OrionMark } from "./icons";
+import { TeamLogo } from "./TeamLogo";
 
 export function SiteHeader() {
   return (
@@ -14,7 +15,10 @@ export function SiteHeader() {
             <a key={n.href} href={n.href} className="text-sm text-muted no-underline hover:text-fg">{n.label}</a>
           ))}
         </nav>
-        <a href="#contact" className="btn px-3.5 text-[11px] min-[1025px]:px-5 min-[1025px]:text-xs">Request a demo</a>
+        <a href="#team" className="flex min-h-11 items-center gap-2 text-sm text-fg no-underline" aria-label="Team ForgeX_NBU">
+          <span className="hidden font-mono text-[11px] uppercase tracking-[0.12em] text-dim sm:inline">by</span>
+          <TeamLogo size={26} />
+        </a>
       </div>
     </header>
   );

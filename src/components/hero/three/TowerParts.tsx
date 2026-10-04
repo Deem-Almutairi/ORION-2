@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useRef, type ReactNode } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { PartId } from "@/lib/parts";
-import { edgesOf, geo, getTabletTexture, mats } from "./materials";
+import { edgesOf, geo, getTabletTexture, mast, mats } from "./materials";
 
 type V3 = [number, number, number];
 
@@ -101,7 +102,49 @@ function Head() {
       <Prim g={geo.torus(0.074, 0.009)} m={mats.led} p={[0, 0, 0.232]} />
       <Prim g={geo.sphere(0.016)} m={mats.glass} p={[0.13, 0, 0.222]} />
       <Prim g={geo.sphere(0.016)} m={mats.glass} p={[-0.13, 0, 0.222]} />
-      <Prim g={geo.cyl(0.05, 0.05, 0.03)} m={mats.led} p={[0, 0.145, 0]} />
+      {useContext(GhostContext) ? null : <Mast />}
+    </group>
+  );
+}
+
+/** Head-local height of the camera pod when fully deployed: 3.5 m above the floor. */
+export const MAST_POD_LOCAL = 3.5 - 1.24;
+const MAST_BASE = 0.13, MAST_OVERLAP = 0.02, MAST_MIN = 0.06;
+export const mastSegment = (k: number) => MAST_MIN + ((MAST_POD_LOCAL - MAST_BASE + 3 * MAST_OVERLAP) / 3 - MAST_MIN) * k;
+export const mastPodY = (k: number) => MAST_BASE + 3 * mastSegment(k) - 3 * MAST_OVERLAP;
+
+/** Three-stage telescopic mast with the camera pod on top. Extension follows `mast.value`. */
+function Mast() {
+  const segs = useRef<(THREE.Mesh | null)[]>([]);
+  const pod = useRef<THREE.Group>(null);
+  const unit = useMemo(() => {
+    const g = new THREE.CylinderGeometry(1, 1, 1, 20);
+    g.translate(0, 0.5, 0);
+    return g;
+  }, []);
+  useFrame(() => {
+    const L = mastSegment(mast.value);
+    segs.current.forEach((m, i) => {
+      if (!m) return;
+      m.position.y = MAST_BASE + i * (L - MAST_OVERLAP);
+      m.scale.y = L;
+    });
+    if (pod.current) pod.current.position.y = mastPodY(mast.value);
+  });
+  const radii = [0.034, 0.026, 0.019];
+  return (
+    <group>
+      {radii.map((r, i) => (
+        <mesh key={r} ref={(el) => { segs.current[i] = el; }} geometry={unit} material={mats.alu} scale={[r, MAST_MIN, r]} position={[0, MAST_BASE, 0]} />
+      ))}
+      <group ref={pod} position={[0, mastPodY(0), 0]}>
+        <mesh geometry={geo.box(0.17, 0.11, 0.17)} material={mats.head} position={[0, 0.055, 0]} />
+        <mesh geometry={geo.cyl(0.05, 0.05, 0.02)} material={mats.led} position={[0, 0.12, 0]} />
+        <group position={[0, 0.05, 0.088]} rotation={[0.55, 0, 0]}>
+          <mesh geometry={geo.cyl(0.032, 0.032, 0.02, 24)} material={mats.glass} rotation={[Math.PI / 2, 0, 0]} />
+          <mesh geometry={geo.torus(0.04, 0.006)} material={mats.led} position={[0, 0, 0.006]} />
+        </group>
+      </group>
     </group>
   );
 }

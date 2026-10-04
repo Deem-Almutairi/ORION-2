@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
-import { GATES } from "@/lib/sim/config";
+import { SCENES } from "@/lib/sim/config";
+
+const GATES = SCENES.find((s) => s.id === "airport")!.zones;
+import { Ceiling } from "./Ceiling";
 import { AMBER, DISPLAY, MONO, edgesOf, geo, makeCanvasTexture, redraw, whenFontsReady } from "./materials";
 
 /** Static airport concourse: floor, walls, windows, gates, seating, columns and the departures board. */
@@ -33,7 +36,7 @@ function drawBoard(g: CanvasRenderingContext2D, w: number, h: number) {
   });
 }
 
-export function Hall() {
+export function AirportHall() {
   const t = useMemo(() => {
     const floor = makeCanvasTexture(256, 256, (g) => {
       g.fillStyle = "#0c1117"; g.fillRect(0, 0, 256, 256);
@@ -78,10 +81,13 @@ export function Hall() {
       <mesh geometry={geo.box(36, 8, 0.3)} material={m.wall} position={[0, 4, -11.15]} />
       <mesh geometry={geo.box(0.3, 8, 22)} material={m.wall} position={[-18.15, 4, 0]} />
       <mesh geometry={geo.box(0.3, 8, 22)} material={m.wall} position={[18.15, 4, 0]} />
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 8, 0]}>
-        <planeGeometry args={[36, 22]} />
-        <meshBasicMaterial color="#080b0f" />
-      </mesh>
+      <Ceiling height={8}>
+        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 8, 0]}>
+          <planeGeometry args={[36, 22]} />
+          <meshBasicMaterial color="#080b0f" />
+        </mesh>
+        {[-7, -2, 3, 8].map((z) => <mesh key={z} geometry={geo.box(32, 0.05, 0.22)} material={m.strip} position={[0, 7.6, z]} />)}
+      </Ceiling>
 
       {Array.from({ length: 12 }, (_, i) => -16.5 + i * 3).map((x) => (
         <group key={x}>
@@ -89,8 +95,6 @@ export function Hall() {
           <mesh geometry={geo.plane(0.06, 3.2)} material={m.mull} position={[x, 5.6, -10.98]} />
         </group>
       ))}
-      {[-7, -2, 3, 8].map((z) => <mesh key={z} geometry={geo.box(32, 0.05, 0.22)} material={m.strip} position={[0, 7.6, z]} />)}
-
       {GATES.map((gt, i) => (
         <group key={gt.id}>
           <mesh geometry={door} material={m.door} position={[gt.x, 1.3, -10.98]} />
@@ -111,11 +115,13 @@ export function Hall() {
 
       {[-12, -4, 4, 12].map((x) => <mesh key={x} geometry={geo.box(0.8, 8, 0.8)} material={m.col} position={[x, 4, 7]} />)}
 
-      <mesh geometry={geo.box(4.9, 1.6, 0.1)} material={m.desk} position={[0, 5.4, 3.13]} />
-      <mesh position={[0, 5.4, 3.2]}>
-        <planeGeometry args={[4.8, 1.5]} />
-        <meshBasicMaterial map={t.board} toneMapped={false} />
-      </mesh>
+      <group position={[-17.95, 4.6, 1]} rotation={[0, Math.PI / 2, 0]}>
+        <mesh geometry={geo.box(4.9, 1.6, 0.1)} material={m.desk} position={[0, 0, -0.06]} />
+        <mesh>
+          <planeGeometry args={[4.8, 1.5]} />
+          <meshBasicMaterial map={t.board} toneMapped={false} />
+        </mesh>
+      </group>
     </group>
   );
 }
