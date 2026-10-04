@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ORION landing page
 
-## Getting Started
+Landing page for ORION (Optimization Robotics Intelligence for Operations & Navigation).
 
-First, run the development server:
+It opens with an interactive 3D hero in two stages:
+
+1. **Assemble:** visitors drag the six tower components onto their slots. Mouse and touch both work.
+2. **Simulate:** ORION powers up and runs a looping airport-concourse shift. The loop covers patrol, detection, a density heatmap, a risk alert at Gate B2 and a recommendation that redirects the crowd to B3.
+
+## Stack
+
+- Next.js 15 (App Router) + TypeScript
+- Tailwind CSS v4
+- React Three Fiber + drei for 3D, with `@react-three/postprocessing` for bloom
+- Zustand for shared state between the 3D scene and the HUD
+- Self-hosted fonts via Fontsource (Chakra Petch, IBM Plex Sans, IBM Plex Mono)
+
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
+npm run build    # production build
+npm start        # serve the production build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Deploy to Vercel as is (no environment variables needed).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Where things live
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Path | What it is |
+| --- | --- |
+| `src/content/site.ts` | All page copy: capabilities, specs, roadmap, contact. Edit text here. |
+| `src/lib/parts.ts` | The six tower parts: names, mount positions, floating positions, grab sizes. |
+| `src/lib/sim/config.ts` | Simulation tuning: gates, patrol route, phase timings, thresholds, passenger count. |
+| `src/lib/sim/engine.ts` | Framework-free simulation engine (passengers, ORION steering, zones, risk, event log). |
+| `src/lib/store.ts` | Zustand store: mode, assembly progress, phase, readout, log. |
+| `src/components/hero/three/` | 3D scene: `Scene`, `AssemblyStage`, `SimulationStage`, `Hall`, `TowerParts`, shared `materials`. |
+| `src/components/hero/Hud.tsx` | Overlay controls and live readout. |
+| `src/components/Sections.tsx` | Statement, capabilities, pipeline, hardware, roadmap, contact, footer. |
 
-## Learn More
+## Common edits
 
-To learn more about Next.js, take a look at the following resources:
+- **Contact details:** set `contactEmail` and `team` in `src/content/site.ts` (currently placeholders).
+- **Real ORION model:** export the CAD as `.glb` into `public/`, load it with drei's `useGLTF` and render it in place of `<Tower/>` (`src/components/hero/three/Tower.tsx`). To keep drag-to-assemble, export each component as its own named node and map them to the ids in `src/lib/parts.ts`.
+- **Busier or calmer hall:** change `SIM.passengers` in `src/lib/sim/config.ts`. Lower it for older phones.
+- **Glow strength:** adjust `<Bloom intensity>` in `src/components/hero/three/Scene.tsx`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The 3D scene loads client-side only (`next/dynamic` with `ssr: false`). The text sections are statically rendered.
+- Rendering quality drops automatically on slow devices (drei `PerformanceMonitor`).
+- In development, each part's screen position is published on `window.__orionParts` for automated touch tests. This is stripped from production builds.
+- The simulation is labelled on the page as a concept for a future autonomous phase. The V1 tower is stationary.
