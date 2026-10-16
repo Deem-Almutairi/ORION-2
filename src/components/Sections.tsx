@@ -1,6 +1,6 @@
 import { capabilities, engineering, hardware, members, pipeline, roadmap, site, sources, statement } from "@/content/site";
 import { CapabilityIcon } from "./icons";
-import { TeamLogo } from "./TeamLogo";
+import { TeamLogo, TeamLogoFull } from "./TeamLogo";
 
 function Head({ eyebrow, title, body }: { eyebrow: string; title: string; body?: string }) {
   return (
@@ -147,7 +147,7 @@ export function Team() {
     <section id="team" className={section}>
       <div className={`${inner} rise`}>
         <div className="flex flex-col gap-5">
-          <TeamLogo size={56} className="text-[32px]" />
+          <TeamLogoFull width={260} className="max-w-[70vw]" />
           <h2 className="max-w-[18ch] text-[clamp(34px,4.6vw,60px)] leading-[1.04]">Built by team <span className="text-acc">ForgeX_NBU</span>.</h2>
           <p className="max-w-[60ch] text-[17px] text-muted">{site.university} · {site.competition} · {site.track}</p>
         </div>

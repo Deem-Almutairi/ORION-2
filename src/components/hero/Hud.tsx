@@ -84,6 +84,9 @@ function SimHud() {
             </button>
           ))}
         </div>
+        <p className="m-0 max-w-[46ch] border-l-2 border-[#f97316] pl-2.5 font-mono text-[11px] uppercase leading-snug tracking-[0.08em] text-muted">
+          <span className="text-[#f97316]">Case · </span>{scene.incident}
+        </p>
         <ol className="m-0 flex list-none flex-wrap gap-1 p-0">
           {PHASES.map((p, i) => (
             <li key={p.id} className={`border px-2.5 py-2 font-mono text-[11px] uppercase leading-none tracking-[0.12em] transition-colors ${
@@ -99,7 +102,7 @@ function SimHud() {
         <div className="panel">
           <h3 className="border-b border-line px-3.5 py-3 font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-dim">Live readout</h3>
           <dl className="m-0 grid grid-cols-2">
-            <Stat label="In hall" value={readout?.people ?? 0} />
+            <Stat label="On site" value={readout?.people ?? 0} />
             <Stat label="Tracked now" value={readout?.tracked ?? 0} />
             <Stat label="Highest risk" value={readout?.highest ?? "Low"} color={readout && readout.highest !== "Low" ? levelColor[readout.highest] : undefined} />
             <Stat label="Shift clock" value={readout?.clock ?? "08:42"} />

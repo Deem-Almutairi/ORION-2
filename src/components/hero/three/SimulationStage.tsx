@@ -88,6 +88,8 @@ function Crowd({ engine }: { engine: SimEngine }) {
     if (!L || !T || !H || !B || !S || !R || !M) return;
     const strength = engine.phase >= 1 ? 1 : 0.35;
     const flagCrowd = engine.phase >= 3 && engine.crowdHigh;
+    // Commuters carry backpacks; airport passengers pull suitcases.
+    const backpacks = engine.scene.id === "station";
     engine.people.forEach((p, i) => {
       const hs = p.look.height, bob = p.moving ? Math.abs(Math.sin(p.walk)) * 0.045 : 0;
       const set = (mesh: THREE.InstancedMesh, x: number, y: number, z: number, ry = p.heading, sy = 1, s = 1) => {
@@ -97,7 +99,8 @@ function Crowd({ engine }: { engine: SimEngine }) {
       set(T, p.x, 1.15 * hs + bob, p.z, p.heading, hs);
       set(H, p.x, 1.6 * hs + bob, p.z);
       const c = Math.cos(p.heading), sn = Math.sin(p.heading);
-      set(B, p.x + 0.32 * c - 0.15 * sn, 0.25, p.z - 0.32 * sn - 0.15 * c, p.heading, 1, p.look.suitcase ? 1 : 0);
+      if (backpacks) set(B, p.x - 0.22 * sn, 1.2 * hs + bob, p.z - 0.22 * c, p.heading, 0.9, p.look.suitcase ? 0.75 : 0);
+      else set(B, p.x + 0.32 * c - 0.15 * sn, 0.25, p.z - 0.32 * sn - 0.15 * c, p.heading, 1, p.look.suitcase ? 1 : 0);
       set(S, p.x, 0.012, p.z, 0);
       set(R, p.x, 0.03, p.z, 0);
       set(M, p.x, 1.95 * hs, p.z, engine.total * 2 + i);
@@ -113,10 +116,10 @@ function Crowd({ engine }: { engine: SimEngine }) {
   const additive = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false } as const;
   return (
     <group>
-      <instancedMesh frustumCulled={false} ref={refs.legs} args={[geos.legs, undefined, n]}><meshStandardMaterial color="#1f262e" roughness={0.8} /></instancedMesh>
+      <instancedMesh frustumCulled={false} ref={refs.legs} args={[geos.legs, undefined, n]}><meshStandardMaterial color={engine.scene.look.legs} roughness={0.8} /></instancedMesh>
       <instancedMesh frustumCulled={false} ref={refs.torso} args={[geos.torso, undefined, n]}><meshStandardMaterial color="#ffffff" roughness={0.7} /></instancedMesh>
       <instancedMesh frustumCulled={false} ref={refs.head} args={[geos.head, undefined, n]}><meshStandardMaterial color="#9c8576" roughness={0.7} /></instancedMesh>
-      <instancedMesh frustumCulled={false} ref={refs.bag} args={[geos.bag, undefined, n]}><meshStandardMaterial color="#2e3742" roughness={0.5} metalness={0.3} /></instancedMesh>
+      <instancedMesh frustumCulled={false} ref={refs.bag} args={[geos.bag, undefined, n]}><meshStandardMaterial color={engine.scene.look.bagColor} roughness={0.5} metalness={0.3} /></instancedMesh>
       <instancedMesh frustumCulled={false} ref={refs.blob} args={[geos.blob, undefined, n]}><meshBasicMaterial map={blobTex} transparent depthWrite={false} /></instancedMesh>
       <instancedMesh frustumCulled={false} ref={refs.ring} args={[geos.ring, undefined, n]}><meshBasicMaterial {...additive} /></instancedMesh>
       <instancedMesh frustumCulled={false} ref={refs.mark} args={[geos.mark, undefined, n]}><meshBasicMaterial {...additive} /></instancedMesh>

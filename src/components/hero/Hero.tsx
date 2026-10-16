@@ -45,6 +45,11 @@ export function Hero() {
           <Scene />
         </div>
         <SceneLabels />
+        {/* Keeps the overlay text readable over bright scenes (daylight airport, white station tiles). */}
+        {mode === "sim" && (
+          <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 hidden w-[46%] min-[1025px]:block"
+            style={{ background: "linear-gradient(90deg, rgb(6 8 11 / 0.82) 0%, rgb(6 8 11 / 0.55) 55%, rgb(6 8 11 / 0) 100%)" }} />
+        )}
 
         {mode === "assemble" && (
           <div aria-hidden className="pointer-events-none absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap border px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-fg min-[1025px]:hidden"
